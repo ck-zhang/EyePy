@@ -9,7 +9,7 @@ This is a Python library that provides **webcam-based gaze tracking**.
 Extract facial features, train gaze tracking model and predict gaze with super easy to use interface.
 
 ## Usage Showcase
-![Demo](https://github.com/user-attachments/assets/fbfe3f9e-e882-40f0-aaa6-9b5570268008)
+![Demo](https://github.com/user-attachments/assets/db84e452-3e26-4b6a-9333-28553130b417)
 
 ## Installation
 
