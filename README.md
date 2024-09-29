@@ -59,6 +59,12 @@ print(predicted_gaze)
 
 ## Future Work
 
+### TODO
+
+- [ ] Improve demo calibration
+- [ ] Blink detection
+- [ ] Integrate with opentrack
+
 Any suggestions for features and improvements are welcome.
 
 If you enjoyed using EyePy, consider giving it a star.
