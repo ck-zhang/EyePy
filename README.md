@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 ## Interactive Demo
 ```shell
-python gaze_estimatior.py
+python demo.py
 ```
 
 ## Usage
@@ -40,8 +40,11 @@ gaze_estimator = GazeEstimator()
 ```python
 import cv2
 image = cv2.imread('image.jpg')
-features = gaze_estimator.extract_features(image)
-print(features)
+features, blink_detected = gaze_estimator.extract_features(image)
+if blink_detected:
+    print("Blink detected!")
+else:
+    print(features)
 ```
 
 ### Training the Model
@@ -58,6 +61,12 @@ print(predicted_gaze)
 ```
 
 ## Future Work
+
+### TODO
+
+- [x] Improve demo calibration
+- [x] Blink detection
+- [ ] Integrate with opentrack
 
 Any suggestions for features and improvements are welcome.
 

@@ -3,8 +3,6 @@ import mediapipe as mp
 import numpy as np
 from sklearn.linear_model import Ridge
 from sklearn.preprocessing import StandardScaler
-import tkinter as tk
-import time
 
 
 class GazeEstimator:
@@ -29,13 +27,13 @@ class GazeEstimator:
 
     def extract_features(self, image):
         """
-        Takes in image and returns features needed for gaze estimation
+        Takes in image and returns features
         """
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(image_rgb)
 
         if not results.multi_face_landmarks:
-            return None
+            return None, None
 
         face_landmarks = results.multi_face_landmarks[0]
         landmarks = face_landmarks.landmark
@@ -67,7 +65,26 @@ class GazeEstimator:
         yaw, pitch = self._calculate_head_orientation(landmarks)
 
         features = np.hstack([left_pupil_rel, right_pupil_rel, [yaw, pitch]])
-        return features
+
+        # Blink detection
+        left_eye_width = np.linalg.norm(left_eye_outer - left_eye_inner)
+        left_eye_height = np.linalg.norm(left_eye_top - left_eye_bottom)
+        left_EAR = left_eye_height / left_eye_width
+
+        right_eye_width = np.linalg.norm(right_eye_outer - right_eye_inner)
+        right_eye_height = np.linalg.norm(right_eye_top - right_eye_bottom)
+        right_EAR = right_eye_height / right_eye_width
+
+        EAR = (left_EAR + right_EAR) / 2
+
+        blink_threshold = 0.2
+
+        if EAR < blink_threshold:
+            blink_detected = True
+        else:
+            blink_detected = False
+
+        return features, blink_detected
 
     def _calculate_relative_position(
         self, pupil, inner_corner, outer_corner, top_point, bottom_point
@@ -163,176 +180,3 @@ class GazeEstimator:
                 X_scaled *= self.variable_scaling
 
             return self.model.predict(X_scaled)
-
-
-def run_calibration(gaze_estimator, camera_index=0):
-    root = tk.Tk()
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    root.destroy()
-
-    points = [
-        (screen_width / 2, screen_height / 2),  # Middle
-        (50, 50),  # Top left
-        (screen_width - 50, 50),  # Top right
-        (50, screen_height - 50),  # Bottom left
-        (screen_width - 50, screen_height - 50),  # Bottom right
-        (50, 50),  # Top left
-        (50, screen_height - 50),  # Bottom left
-        (screen_width - 50, 50),  # Top right
-        (screen_width - 50, screen_height - 50),  # Bottom right
-        (screen_width / 2, screen_height / 2),  # Middle
-    ]
-
-    cv2.namedWindow("Calibration", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty("Calibration", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
-
-    cap = cv2.VideoCapture(camera_index)
-
-    features_list = []
-    targets_list = []
-
-    N = 30  # Frames per movement
-
-    def ease_in_out_quad(t):
-        if t < 0.5:
-            return 2 * t * t
-        else:
-            return -1 + (4 - 2 * t) * t
-
-    for i in range(len(points) - 1):
-        p0 = points[i]
-        p1 = points[i + 1]
-
-        # Loop until a valid face is detected
-        valid_face_detected = False
-        while not valid_face_detected:
-            ret, frame = cap.read()
-            if not ret:
-                continue
-
-            # Extract features from the current frame
-            features = gaze_estimator.extract_features(frame)
-            if features is not None:
-                valid_face_detected = True
-                print(f"Face detected for calibration point {p0}")
-
-        for frame_idx in range(N):
-            ret, frame = cap.read()
-            if not ret:
-                continue
-
-            t = frame_idx / (N - 1)
-            eased_t = ease_in_out_quad(t)
-
-            x = int(p0[0] + (p1[0] - p0[0]) * eased_t)
-            y = int(p0[1] + (p1[1] - p0[1]) * eased_t)
-
-            canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
-            cv2.circle(canvas, (x, y), 20, (0, 255, 0), -1)
-
-            cv2.imshow("Calibration", canvas)
-            cv2.waitKey(1)
-
-            # Extract features from the current frame
-            features = gaze_estimator.extract_features(frame)
-            if features is not None:
-                features_list.append(features)
-                targets_list.append([x, y])
-
-    cap.release()
-    cv2.destroyWindow("Calibration")
-
-    X = np.array(features_list)
-    y = np.array(targets_list)
-
-    gaze_estimator.train(X, y)
-
-
-def main():
-    camera_index = 1
-
-    gaze_estimator = GazeEstimator()
-
-    run_calibration(gaze_estimator, camera_index=camera_index)
-
-    root = tk.Tk()
-    screen_width = root.winfo_screenwidth()
-    screen_height = root.winfo_screenheight()
-    root.destroy()
-
-    cam_width, cam_height = 480, 360
-
-    cv2.namedWindow("Gaze Estimation", cv2.WND_PROP_FULLSCREEN)
-    cv2.setWindowProperty(
-        "Gaze Estimation", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN
-    )
-
-    cap = cv2.VideoCapture(camera_index)
-    prev_time = time.time()
-
-    kalman = cv2.KalmanFilter(4, 2)
-    kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
-    kalman.transitionMatrix = np.array(
-        [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32
-    )
-    kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 0.03
-    kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1
-    kalman.statePre = np.zeros((4, 1), np.float32)
-    kalman.statePost = np.zeros((4, 1), np.float32)
-
-    while True:
-        ret, frame = cap.read()
-        if not ret:
-            continue
-
-        features = gaze_estimator.extract_features(frame)
-        if features is not None:
-            X = np.array([features])
-            gaze_point = gaze_estimator.predict(X)[0]
-            x, y = int(gaze_point[0]), int(gaze_point[1])
-        else:
-            x, y = None, None
-
-        small_frame = cv2.resize(frame, (cam_width, cam_height))
-
-        canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
-
-        canvas[:cam_height, :cam_width] = small_frame
-
-        prediction = kalman.predict()
-        x_pred, y_pred = int(prediction[0]), int(prediction[1])
-
-        if x is not None and y is not None:
-            measurement = np.array([[np.float32(x)], [np.float32(y)]])
-            if np.count_nonzero(kalman.statePre) == 0:
-                kalman.statePre[:2] = measurement
-                kalman.statePost[:2] = measurement
-            kalman.correct(measurement)
-
-        cv2.circle(canvas, (x_pred, y_pred), 20, (0, 0, 255), -1)
-
-        current_time = time.time()
-        fps = 1 / (current_time - prev_time)
-        prev_time = current_time
-
-        cv2.putText(
-            canvas,
-            f"FPS: {int(fps)}",
-            (50, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 255),
-            2,
-        )
-
-        cv2.imshow("Gaze Estimation", canvas)
-        if cv2.waitKey(1) == 27:
-            break
-
-    cap.release()
-    cv2.destroyAllWindows()
-
-
-if __name__ == "__main__":
-    main()
