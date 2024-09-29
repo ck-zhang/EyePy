@@ -25,7 +25,7 @@ pip install -r requirements.txt
 
 ## Interactive Demo
 ```shell
-python gaze_estimation.py
+python gaze_estimatior.py
 ```
 
 ## Usage
