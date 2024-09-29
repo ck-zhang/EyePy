@@ -5,27 +5,30 @@
 ![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)
 ![GitHub stars](https://img.shields.io/github/stars/ck-zhang/EyePy.svg?style=social)
 
-This is a Python library that provides **webcam-based gaze tracking**.
-Extract facial features, train gaze tracking model and predict gaze with super easy to use interface.
+This is a Python library that provides **webcam-based eye tracking**.
+Extract facial features, train eye tracking model and predict gaze with super easy to use interface.
 
 ## Usage Showcase
 ![Demo](https://github.com/user-attachments/assets/08d7af7b-9a45-4c78-bfb5-93db1d0f45c4)
 
-## Installation
+## Installation and Interactive Demo
 
 Clone this project:
 ```shell
 git clone https://github.com/ck-zhang/EyePy
 ```
 
-Install dependencies:
+### Using Pip
 ```shell
 pip install -r requirements.txt
+python demo.py
 ```
 
-## Interactive Demo
+### Using uv
 ```shell
-python demo.py
+pip install uv
+uv sync
+uv run demo.py
 ```
 
 ## Usage
