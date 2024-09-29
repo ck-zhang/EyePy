@@ -6,7 +6,57 @@ from sklearn.preprocessing import StandardScaler
 import tkinter as tk
 import time
 
+## Mouse code. this could be all as a seperate file i guess
 
+import numpy as np
+from pynput.mouse import Controller
+import cv2
+
+class GazeMouseController:
+    def __init__(self, gaze_estimator, smooth_factor=0.1):
+        self.gaze_estimator = gaze_estimator
+        self.smooth_factor = smooth_factor
+        self.mouse = Controller()
+
+        # Initialize previous gaze point for smoothing
+        self.prev_gaze_point = None
+
+    def smooth_gaze(self, new_gaze_point):
+        """
+        Smooth the new gaze point with the previous one using a simple linear interpolation.
+        """
+        if self.prev_gaze_point is None:
+            self.prev_gaze_point = new_gaze_point
+            return new_gaze_point
+
+        smoothed_gaze = (
+            self.prev_gaze_point * (1 - self.smooth_factor)
+            + new_gaze_point * self.smooth_factor
+        )
+
+        self.prev_gaze_point = smoothed_gaze
+        return smoothed_gaze
+
+    def move_mouse(self, frame):
+        """
+        Predict the gaze point and move the mouse smoothly.
+        """
+        features = self.gaze_estimator.extract_features(frame)
+        if features is not None:
+            # Predict the gaze location
+            X = np.array([features])
+            gaze_point = self.gaze_estimator.predict(X)[0]
+
+            # Smooth the gaze point
+            smoothed_gaze = self.smooth_gaze(gaze_point)
+
+            # Move the mouse using pynput
+            x, y = int(smoothed_gaze[0]), int(smoothed_gaze[1])
+            self.mouse.position = (x, y)
+
+            return (x, y)  # Return the position for feedback if needed
+        return None
+        
 class GazeEstimator:
     def __init__(self, use_separate_models=False):
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
@@ -252,7 +302,9 @@ def run_calibration(gaze_estimator, camera_index=0):
 def main():
     camera_index = 1
 
+    # Initialize gaze estimator and gaze mouse controller
     gaze_estimator = GazeEstimator()
+    gaze_mouse_controller = GazeMouseController(gaze_estimator, smooth_factor=0.2)
 
     run_calibration(gaze_estimator, camera_index=camera_index)
 
@@ -286,49 +338,37 @@ def main():
         if not ret:
             continue
 
-        features = gaze_estimator.extract_features(frame)
-        if features is not None:
-            X = np.array([features])
-            gaze_point = gaze_estimator.predict(X)[0]
-            x, y = int(gaze_point[0]), int(gaze_point[1])
-        else:
-            x, y = None, None
+        # Use the gaze mouse controller to move the mouse smoothly
+        gaze_position = gaze_mouse_controller.move_mouse(frame)
 
-        small_frame = cv2.resize(frame, (cam_width, cam_height))
+        if gaze_position is not None:
+            x, y = gaze_position
+            prediction = kalman.predict()
+            x_pred, y_pred = int(prediction[0]), int(prediction[1])
 
-        canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
+            small_frame = cv2.resize(frame, (cam_width, cam_height))
+            canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
+            canvas[:cam_height, :cam_width] = small_frame
 
-        canvas[:cam_height, :cam_width] = small_frame
+            cv2.circle(canvas, (x_pred, y_pred), 20, (0, 0, 255), -1)
 
-        prediction = kalman.predict()
-        x_pred, y_pred = int(prediction[0]), int(prediction[1])
+            current_time = time.time()
+            fps = 1 / (current_time - prev_time)
+            prev_time = current_time
 
-        if x is not None and y is not None:
-            measurement = np.array([[np.float32(x)], [np.float32(y)]])
-            if np.count_nonzero(kalman.statePre) == 0:
-                kalman.statePre[:2] = measurement
-                kalman.statePost[:2] = measurement
-            kalman.correct(measurement)
+            cv2.putText(
+                canvas,
+                f"FPS: {int(fps)}",
+                (50, 50),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                1,
+                (255, 255, 255),
+                2,
+            )
 
-        cv2.circle(canvas, (x_pred, y_pred), 20, (0, 0, 255), -1)
-
-        current_time = time.time()
-        fps = 1 / (current_time - prev_time)
-        prev_time = current_time
-
-        cv2.putText(
-            canvas,
-            f"FPS: {int(fps)}",
-            (50, 50),
-            cv2.FONT_HERSHEY_SIMPLEX,
-            1,
-            (255, 255, 255),
-            2,
-        )
-
-        cv2.imshow("Gaze Estimation", canvas)
-        if cv2.waitKey(1) == 27:
-            break
+            cv2.imshow("Gaze Estimation", canvas)
+            if cv2.waitKey(1) == 27:
+                break
 
     cap.release()
     cv2.destroyAllWindows()
