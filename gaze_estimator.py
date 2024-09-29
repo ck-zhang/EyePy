@@ -204,6 +204,19 @@ def run_calibration(gaze_estimator, camera_index=0):
         p0 = points[i]
         p1 = points[i + 1]
 
+        # Loop until a valid face is detected
+        valid_face_detected = False
+        while not valid_face_detected:
+            ret, frame = cap.read()
+            if not ret:
+                continue
+
+            # Extract features from the current frame
+            features = gaze_estimator.extract_features(frame)
+            if features is not None:
+                valid_face_detected = True
+                print(f"Face detected for calibration point {p0}")
+
         for frame_idx in range(N):
             ret, frame = cap.read()
             if not ret:
@@ -221,6 +234,7 @@ def run_calibration(gaze_estimator, camera_index=0):
             cv2.imshow("Calibration", canvas)
             cv2.waitKey(1)
 
+            # Extract features from the current frame
             features = gaze_estimator.extract_features(frame)
             if features is not None:
                 features_list.append(features)
