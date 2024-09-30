@@ -70,6 +70,7 @@ print(predicted_gaze)
 - [x] Improve demo calibration
 - [x] Blink detection
 - [ ] Integrate with opentrack
+- [ ] Mouse control functionality
 
 Any suggestions for features and improvements are welcome.
 
