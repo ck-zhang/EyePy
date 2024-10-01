@@ -62,9 +62,9 @@ class GazeEstimator:
             right_eye_bottom,
         )
 
-        yaw, pitch = self._calculate_head_orientation(landmarks)
+        yaw, pitch, roll = self._calculate_head_orientation(landmarks)
 
-        features = np.hstack([left_pupil_rel, right_pupil_rel, [yaw, pitch]])
+        features = np.hstack([left_pupil_rel, right_pupil_rel, [yaw, pitch, roll]])
 
         # Blink detection
         left_eye_width = np.linalg.norm(left_eye_outer - left_eye_inner)
@@ -117,7 +117,10 @@ class GazeEstimator:
         yaw = nose_tip[0] - eye_center[0]
         pitch = nose_tip[1] - eye_center[1]
 
-        return yaw, pitch
+        eye_line_vector = right_eye_outer - left_eye_outer
+        roll = np.arctan2(eye_line_vector[1], eye_line_vector[0])
+
+        return yaw, pitch, roll
 
     def train(self, X, y, alpha=1.0, variable_scaling=None):
         """
