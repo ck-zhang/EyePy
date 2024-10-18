@@ -135,12 +135,140 @@ def run_calibration(gaze_estimator, camera_index=0):
     gaze_estimator.train(X, y)
 
 
+def fine_tune_kalman_filter(gaze_estimator, kalman, camera_index=0):
+    root = tk.Tk()
+    screen_width = root.winfo_screenwidth()
+    screen_height = root.winfo_screenheight()
+    root.destroy()
+
+    initial_points = [
+        {
+            "position": (screen_width // 2, screen_height // 4),
+            "start_time": None,
+            "collected_gaze": [],
+        },
+        {
+            "position": (screen_width // 4, 3 * screen_height // 4),
+            "start_time": None,
+            "collected_gaze": [],
+        },
+        {
+            "position": (3 * screen_width // 4, 3 * screen_height // 4),
+            "start_time": None,
+            "collected_gaze": [],
+        },
+    ]
+
+    points = initial_points.copy()
+
+    proximity_threshold = screen_width / 5  # pixels
+    dot_duration = 3  # seconds
+
+    cv2.namedWindow("Fine Tuning", cv2.WND_PROP_FULLSCREEN)
+    cv2.setWindowProperty("Fine Tuning", cv2.WND_PROP_FULLSCREEN, cv2.WINDOW_FULLSCREEN)
+
+    cap = cv2.VideoCapture(camera_index)
+
+    gaze_positions = []
+
+    while len(points) > 0:
+        ret, frame = cap.read()
+        if not ret:
+            continue
+
+        features, blink_detected = gaze_estimator.extract_features(frame)
+        canvas = np.zeros((screen_height, screen_width, 3), dtype=np.uint8)
+
+        for point in points:
+            cv2.circle(canvas, point["position"], 20, (0, 255, 0), -1)
+
+        font = cv2.FONT_HERSHEY_SIMPLEX
+        font_scale = 1.5
+        color = (255, 255, 255)
+        thickness = 2
+        text = "Look at the points until they disappear"
+        text_size, _ = cv2.getTextSize(text, font, font_scale, thickness)
+        text_x = (screen_width - text_size[0]) // 2
+        text_y = screen_height - 50
+        cv2.putText(canvas, text, (text_x, text_y), font, font_scale, color, thickness)
+
+        if features is not None and not blink_detected:
+            X = np.array([features])
+            gaze_point = gaze_estimator.predict(X)[0]
+            gaze_x, gaze_y = int(gaze_point[0]), int(gaze_point[1])
+
+            cv2.circle(canvas, (gaze_x, gaze_y), 10, (255, 0, 0), -1)
+
+            for point in points[:]:
+                dx = gaze_x - point["position"][0]
+                dy = gaze_y - point["position"][1]
+                distance = np.sqrt(dx * dx + dy * dy)
+                if distance <= proximity_threshold:
+                    if point["start_time"] is None:
+                        point["start_time"] = time.time()
+                        point["collected_gaze"] = []
+                    elapsed_time = time.time() - point["start_time"]
+                    point["collected_gaze"].append([gaze_x, gaze_y])
+
+                    shake_amplitude = int(5 + (elapsed_time / dot_duration) * 20)
+                    shake_x = int(np.random.uniform(-shake_amplitude, shake_amplitude))
+                    shake_y = int(np.random.uniform(-shake_amplitude, shake_amplitude))
+                    shaken_position = (
+                        int(point["position"][0] + shake_x),
+                        int(point["position"][1] + shake_y),
+                    )
+                    cv2.circle(canvas, shaken_position, 20, (0, 255, 0), -1)
+
+                    if elapsed_time >= dot_duration:
+                        gaze_positions.extend(point["collected_gaze"])
+                        points.remove(point)
+                else:
+                    point["start_time"] = None
+                    point["collected_gaze"] = []
+        else:
+            for point in points:
+                point["start_time"] = None
+                point["collected_gaze"] = []
+
+        cv2.imshow("Fine Tuning", canvas)
+        if cv2.waitKey(1) == 27:
+            cap.release()
+            cv2.destroyWindow("Fine Tuning")
+            return
+
+    cap.release()
+    cv2.destroyWindow("Fine Tuning")
+
+    gaze_positions = np.array(gaze_positions)
+    if gaze_positions.shape[0] < 2:
+        return
+
+    gaze_variance = np.var(gaze_positions, axis=0)
+    gaze_variance[gaze_variance == 0] = 1e-4
+
+    kalman.measurementNoiseCov = np.array(
+        [[gaze_variance[0], 0], [0, gaze_variance[1]]], dtype=np.float32
+    )
+
+
 def main():
-    camera_index = 1
+    camera_index = 0
 
     gaze_estimator = GazeEstimator()
 
     run_calibration(gaze_estimator, camera_index=camera_index)
+
+    kalman = cv2.KalmanFilter(4, 2)
+    kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
+    kalman.transitionMatrix = np.array(
+        [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32
+    )
+    kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 1
+    kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1
+    kalman.statePre = np.zeros((4, 1), np.float32)
+    kalman.statePost = np.zeros((4, 1), np.float32)
+
+    fine_tune_kalman_filter(gaze_estimator, kalman, camera_index=camera_index)
 
     root = tk.Tk()
     screen_width = root.winfo_screenwidth()
@@ -156,16 +284,6 @@ def main():
 
     cap = cv2.VideoCapture(camera_index)
     prev_time = time.time()
-
-    kalman = cv2.KalmanFilter(4, 2)
-    kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
-    kalman.transitionMatrix = np.array(
-        [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32
-    )
-    kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 0.0005
-    kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1
-    kalman.statePre = np.zeros((4, 1), np.float32)
-    kalman.statePost = np.zeros((4, 1), np.float32)
 
     while True:
         ret, frame = cap.read()
