@@ -11,6 +11,8 @@ Extract facial features, train eye tracking model and predict gaze with super ea
 ## Usage Showcase
 ![Demo](https://github.com/user-attachments/assets/08d7af7b-9a45-4c78-bfb5-93db1d0f45c4)
 
+*(Note: The demo hasn't been updated yet, but the latest version now features smoother predictions and blink detection.)*
+
 ## Installation and Interactive Demo
 
 Clone this project:
@@ -69,8 +71,8 @@ print(predicted_gaze)
 
 - [x] Improve demo calibration
 - [x] Blink detection
+- [x] Demo Kalman filter auto tuning
 - [ ] Integrate with opentrack
-- [ ] Mouse control functionality
 
 Any suggestions for features and improvements are welcome.
 
