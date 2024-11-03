@@ -9,9 +9,7 @@ This is a Python library that provides **webcam-based eye tracking**.
 Extract facial features, train eye tracking model and predict gaze with super easy to use interface.
 
 ## Usage Showcase
-![Demo](https://github.com/user-attachments/assets/08d7af7b-9a45-4c78-bfb5-93db1d0f45c4)
-
-*(Note: The demo hasn't been updated yet, but the latest version now features smoother predictions and blink detection.)*
+![Demo](https://github.com/user-attachments/assets/7e95c1f6-c56a-4760-a316-13d656fa24d2)
 
 ## Installation and Interactive Demo
 
@@ -32,6 +30,14 @@ pip install uv
 uv sync
 uv run demo.py
 ```
+
+### Options
+
+- `--filter {kalman,kde}`: Filter method; `kalman` for Kalman Filter, or `kde` for a cool contour like in the demo
+- `--background BACKGROUND`: Path to background image file
+- `--confidence CONFIDENCE`: Set confidence interval for KDE contour; value must be between 0 and 1
+- `--camera CAMERA`: Specify camera index
+
 
 ## Usage
 
@@ -69,9 +75,6 @@ print(predicted_gaze)
 
 ### TODO
 
-- [x] Improve demo calibration
-- [x] Blink detection
-- [x] Demo Kalman filter auto tuning
 - [ ] Integrate with opentrack
 
 Any suggestions for features and improvements are welcome.
