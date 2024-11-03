@@ -27,7 +27,7 @@ class GazeEstimator:
 
     def extract_features(self, image):
         """
-        Takes in image and returns features
+        Takes in image and returns landmarks around the eye region.
         """
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(image_rgb)
@@ -38,9 +38,190 @@ class GazeEstimator:
         face_landmarks = results.multi_face_landmarks[0]
         landmarks = face_landmarks.landmark
 
-        left_pupil = np.array([landmarks[468].x, landmarks[468].y])
-        right_pupil = np.array([landmarks[473].x, landmarks[473].y])
+        left_eye_indices = [
+            # Upper brow
+            107,
+            66,
+            105,
+            63,
+            70,
+            # Lower brow
+            55,
+            65,
+            52,
+            53,
+            46,
+            # Pupil center and around
+            468,
+            469,
+            470,
+            471,
+            472,
+            # Corners of the eye
+            133,  # Inner eye corner
+            33,  # Outer eye corner
+            # Eye upper
+            173,
+            157,
+            158,
+            159,
+            160,
+            161,
+            246,
+            # Eye lower
+            155,
+            154,
+            153,
+            145,
+            144,
+            163,
+            7,
+            # First layer around eye
+            243,
+            190,
+            56,
+            28,
+            27,
+            29,
+            30,
+            247,
+            130,
+            25,
+            110,
+            24,
+            23,
+            22,
+            26,
+            112,
+            # Second layer around eye
+            244,
+            189,
+            221,
+            222,
+            223,
+            224,
+            225,
+            113,
+            226,
+            31,
+            228,
+            229,
+            230,
+            231,
+            232,
+            233,
+            # Third layer around eye
+            193,
+            245,
+            128,
+            121,
+            120,
+            119,
+            118,
+            117,
+            111,
+            35,
+            124,
+            143,
+            156,
+        ]
 
+        right_eye_indices = [
+            # Upper brow
+            336,
+            296,
+            334,
+            293,
+            300,
+            # Lower brow
+            285,
+            295,
+            282,
+            283,
+            276,
+            # Pupil center and around
+            473,
+            476,
+            475,
+            474,
+            477,
+            # Corners of the eye
+            362,  # Inner eye corner
+            263,  # Outer eye corner
+            # Eye upper
+            398,
+            384,
+            385,
+            386,
+            387,
+            388,
+            466,
+            # Eye lower
+            382,
+            381,
+            380,
+            374,
+            373,
+            390,
+            249,
+            # First layer around eye
+            463,
+            414,
+            286,
+            258,
+            257,
+            259,
+            260,
+            467,
+            359,
+            255,
+            339,
+            254,
+            253,
+            252,
+            256,
+            341,
+            # Second layer around eye
+            464,
+            413,
+            441,
+            442,
+            443,
+            444,
+            445,
+            342,
+            446,
+            261,
+            448,
+            449,
+            450,
+            451,
+            452,
+            453,
+            # Third layer around eye
+            417,
+            465,
+            357,
+            350,
+            349,
+            348,
+            347,
+            346,
+            340,
+            265,
+            353,
+            372,
+            383,
+        ]
+
+        mutual_indices = [4, 10, 151, 9, 152, 234, 454, 288, 58]
+
+        eye_landmarks = [
+            landmarks[i] for i in left_eye_indices + right_eye_indices + mutual_indices
+        ]
+        features = np.array([(lm.x, lm.y, lm.z) for lm in eye_landmarks]).flatten()
+
+        # Blink detection
         left_eye_inner = np.array([landmarks[133].x, landmarks[133].y])
         left_eye_outer = np.array([landmarks[33].x, landmarks[33].y])
         left_eye_top = np.array([landmarks[159].x, landmarks[159].y])
@@ -51,22 +232,6 @@ class GazeEstimator:
         right_eye_top = np.array([landmarks[386].x, landmarks[386].y])
         right_eye_bottom = np.array([landmarks[374].x, landmarks[374].y])
 
-        left_pupil_rel = self._calculate_relative_position(
-            left_pupil, left_eye_inner, left_eye_outer, left_eye_top, left_eye_bottom
-        )
-        right_pupil_rel = self._calculate_relative_position(
-            right_pupil,
-            right_eye_inner,
-            right_eye_outer,
-            right_eye_top,
-            right_eye_bottom,
-        )
-
-        yaw, pitch = self._calculate_head_orientation(landmarks)
-
-        features = np.hstack([left_pupil_rel, right_pupil_rel, [yaw, pitch]])
-
-        # Blink detection
         left_eye_width = np.linalg.norm(left_eye_outer - left_eye_inner)
         left_eye_height = np.linalg.norm(left_eye_top - left_eye_bottom)
         left_EAR = left_eye_height / left_eye_width
@@ -86,42 +251,6 @@ class GazeEstimator:
 
         return features, blink_detected
 
-    def _calculate_relative_position(
-        self, pupil, inner_corner, outer_corner, top_point, bottom_point
-    ):
-        """
-        Calculates relative pupil position within the eye
-        """
-        eye_width = np.linalg.norm(outer_corner - inner_corner)
-        horizontal_pos = np.dot(pupil - inner_corner, outer_corner - inner_corner) / (
-            eye_width**2
-        )
-
-        eye_height = np.linalg.norm(top_point - bottom_point)
-        vertical_pos = np.dot(pupil - bottom_point, top_point - bottom_point) / (
-            eye_height**2
-        )
-
-        return np.array([horizontal_pos, vertical_pos])
-
-    def _calculate_head_orientation(self, landmarks):
-        """
-        Calculates head orientation
-        """
-        nose_tip = np.array([landmarks[1].x, landmarks[1].y])
-
-        left_eye_outer = np.array([landmarks[33].x, landmarks[33].y])
-        right_eye_outer = np.array([landmarks[263].x, landmarks[263].y])
-        eye_center = (left_eye_outer + right_eye_outer) / 2
-
-        yaw = nose_tip[0] - eye_center[0]
-        pitch = nose_tip[1] - eye_center[1]
-
-        eye_line_vector = right_eye_outer - left_eye_outer
-        roll = np.arctan2(eye_line_vector[1], eye_line_vector[0])
-
-        return yaw, pitch
-
     def train(self, X, y, alpha=1.0, variable_scaling=None):
         """
         Trains gaze prediction model
@@ -129,8 +258,8 @@ class GazeEstimator:
         self.variable_scaling = variable_scaling
 
         if self.use_separate_models:
-            X_x = X[:, [0, 2, 4]]  # horizontal ratios and yaw
-            X_y = X[:, [1, 3, 5]]  # vertical ratios and pitch
+            X_x = X
+            X_y = X
 
             X_x_scaled = self.scaler_x.fit_transform(X_x)
             X_y_scaled = self.scaler_y.fit_transform(X_y)
@@ -160,11 +289,8 @@ class GazeEstimator:
             if self.model_x is None or self.model_y is None:
                 raise Exception("Models are not trained yet.")
 
-            X_x = X[:, [0, 2, 4]]  # horizontal ratios and yaw
-            X_y = X[:, [1, 3, 5]]  # vertical ratios and pitch
-
-            X_x_scaled = self.scaler_x.transform(X_x)
-            X_y_scaled = self.scaler_y.transform(X_y)
+            X_x_scaled = self.scaler_x.transform(X)
+            X_y_scaled = self.scaler_y.transform(X)
 
             if self.variable_scaling is not None:
                 X_x_scaled *= self.variable_scaling
