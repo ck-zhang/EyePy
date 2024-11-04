@@ -75,6 +75,7 @@ print(predicted_gaze)
 
 ### TODO
 
+- [ ] Integrate with OBS
 - [ ] Integrate with opentrack
 
 Any suggestions for features and improvements are welcome.
