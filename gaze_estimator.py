@@ -6,24 +6,16 @@ from sklearn.preprocessing import StandardScaler
 
 
 class GazeEstimator:
-    def __init__(self, use_separate_models=False):
+    def __init__(self):
         self.face_mesh = mp.solutions.face_mesh.FaceMesh(
             static_image_mode=False,
             max_num_faces=1,
             refine_landmarks=True,
             min_detection_confidence=0.5,
         )
-        self.use_separate_models = use_separate_models
+        self.model = None
+        self.scaler = StandardScaler()
         self.variable_scaling = None
-
-        if self.use_separate_models:
-            self.scaler_x = StandardScaler()
-            self.scaler_y = StandardScaler()
-            self.model_x = None
-            self.model_y = None
-        else:
-            self.model = None
-            self.scaler = StandardScaler()
 
     def extract_features(self, image):
         """
@@ -274,55 +266,22 @@ class GazeEstimator:
         """
         self.variable_scaling = variable_scaling
 
-        if self.use_separate_models:
-            X_x = X
-            X_y = X
+        X_scaled = self.scaler.fit_transform(X)
+        if self.variable_scaling is not None:
+            X_scaled *= self.variable_scaling
 
-            X_x_scaled = self.scaler_x.fit_transform(X_x)
-            X_y_scaled = self.scaler_y.fit_transform(X_y)
-
-            if self.variable_scaling is not None:
-                X_x_scaled *= self.variable_scaling
-                X_y_scaled *= self.variable_scaling
-
-            self.model_x = Ridge(alpha=alpha)
-            self.model_y = Ridge(alpha=alpha)
-            self.model_x.fit(X_x_scaled, y[:, 0])
-            self.model_y.fit(X_y_scaled, y[:, 1])
-        else:
-            X_scaled = self.scaler.fit_transform(X)
-
-            if self.variable_scaling is not None:
-                X_scaled *= self.variable_scaling
-
-            self.model = Ridge(alpha=alpha)
-            self.model.fit(X_scaled, y)
+        self.model = Ridge(alpha=alpha)
+        self.model.fit(X_scaled, y)
 
     def predict(self, X):
         """
         Predicts gaze location
         """
-        if self.use_separate_models:
-            if self.model_x is None or self.model_y is None:
-                raise Exception("Models are not trained yet.")
+        if self.model is None:
+            raise Exception("Model is not trained yet.")
 
-            X_x_scaled = self.scaler_x.transform(X)
-            X_y_scaled = self.scaler_y.transform(X)
+        X_scaled = self.scaler.transform(X)
+        if self.variable_scaling is not None:
+            X_scaled *= self.variable_scaling
 
-            if self.variable_scaling is not None:
-                X_x_scaled *= self.variable_scaling
-                X_y_scaled *= self.variable_scaling
-
-            x_pred = self.model_x.predict(X_x_scaled)
-            y_pred = self.model_y.predict(X_y_scaled)
-            return np.vstack((x_pred, y_pred)).T
-        else:
-            if self.model is None:
-                raise Exception("Model is not trained yet.")
-
-            X_scaled = self.scaler.transform(X)
-
-            if self.variable_scaling is not None:
-                X_scaled *= self.variable_scaling
-
-            return self.model.predict(X_scaled)
+        return self.model.predict(X_scaled)
