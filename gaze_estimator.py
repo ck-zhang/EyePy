@@ -27,7 +27,8 @@ class GazeEstimator:
 
     def extract_features(self, image):
         """
-        Takes in image and returns landmarks around the eye region.
+        Takes in image and returns landmarks around the eye region
+        Normalization with nose tip as anchor
         """
         image_rgb = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
         results = self.face_mesh.process(image_rgb)
@@ -216,10 +217,21 @@ class GazeEstimator:
 
         mutual_indices = [4, 10, 151, 9, 152, 234, 454, 288, 58]
 
-        eye_landmarks = [
-            landmarks[i] for i in left_eye_indices + right_eye_indices + mutual_indices
-        ]
-        features = np.array([(lm.x, lm.y, lm.z) for lm in eye_landmarks]).flatten()
+        all_points = np.array(
+            [(lm.x, lm.y, lm.z) for lm in landmarks], dtype=np.float32
+        )
+        anchor = all_points[4]
+        all_points_centered = all_points - anchor
+
+        left_corner = all_points[33]
+        right_corner = all_points[263]
+        inter_eye_dist = np.linalg.norm(right_corner - left_corner)
+        if inter_eye_dist > 1e-7:
+            all_points_centered /= inter_eye_dist
+
+        subset_indices = left_eye_indices + right_eye_indices + mutual_indices
+        eye_landmarks = all_points_centered[subset_indices]
+        features = eye_landmarks.flatten()
 
         # Blink detection
         left_eye_inner = np.array([landmarks[133].x, landmarks[133].y])
@@ -234,20 +246,15 @@ class GazeEstimator:
 
         left_eye_width = np.linalg.norm(left_eye_outer - left_eye_inner)
         left_eye_height = np.linalg.norm(left_eye_top - left_eye_bottom)
-        left_EAR = left_eye_height / left_eye_width
+        left_EAR = left_eye_height / (left_eye_width + 1e-8)
 
         right_eye_width = np.linalg.norm(right_eye_outer - right_eye_inner)
         right_eye_height = np.linalg.norm(right_eye_top - right_eye_bottom)
-        right_EAR = right_eye_height / right_eye_width
+        right_EAR = right_eye_height / (right_eye_width + 1e-8)
 
         EAR = (left_EAR + right_EAR) / 2
-
         blink_threshold = 0.2
-
-        if EAR < blink_threshold:
-            blink_detected = True
-        else:
-            blink_detected = False
+        blink_detected = EAR < blink_threshold
 
         return features, blink_detected
 
