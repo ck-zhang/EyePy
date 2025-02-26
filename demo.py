@@ -15,9 +15,9 @@ def main():
     )
     parser.add_argument(
         "--filter",
-        choices=["kalman", "kde"],
+        choices=["kalman", "kde", "none"],
         default="kde",
-        help="Filter method: kalman or kde",
+        help="Filter method: kalman, kde, or none",
     )
     parser.add_argument("--camera", type=int, default=0, help="Camera index")
     parser.add_argument(
@@ -107,6 +107,7 @@ def main():
                     kalman.statePre[:2] = measurement
                     kalman.statePost[:2] = measurement
                 kalman.correct(measurement)
+
             elif filter_method == "kde":
                 current_time = time.time()
                 gaze_history.append((current_time, x, y))
@@ -165,6 +166,10 @@ def main():
                     x_pred, y_pred = x, y
                     contours = []
             # Increase cursor alpha for fade-in effect
+            elif filter_method == "none":
+                x_pred, y_pred = x, y
+                contours = []
+
             cursor_alpha = min(cursor_alpha + cursor_alpha_step, 1.0)
         else:
             x_pred, y_pred = None, None
@@ -176,8 +181,10 @@ def main():
 
         canvas = background.copy()
 
-        if filter_method == "kde" and contours:
-            cv2.drawContours(canvas, contours, -1, (15, 182, 242), thickness=5)
+        if filter_method == "kde" and features is not None and not blink_detected:
+            if len(gaze_history) > 1:
+                if "contours" in locals():
+                    cv2.drawContours(canvas, contours, -1, (15, 182, 242), thickness=5)
 
         # Draw the gaze cursor with fade effect
         if x_pred is not None and y_pred is not None and cursor_alpha > 0:
