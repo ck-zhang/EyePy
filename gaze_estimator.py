@@ -215,7 +215,17 @@ class GazeEstimator:
             383,
         ]
 
-        mutual_indices = [4, 10, 151, 9, 152, 234, 454, 288, 58]
+        mutual_indices = [
+            4,  # Nose
+            10,  # Very top
+            151,  # Forehead
+            9,  # Between brow
+            152,  # Chin
+            234,  # Very left
+            454,  # Very right
+            58,  # Left jaw
+            288,  # Right jaw
+        ]
 
         all_points = np.array(
             [(lm.x, lm.y, lm.z) for lm in landmarks], dtype=np.float32
