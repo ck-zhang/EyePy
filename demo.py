@@ -96,7 +96,8 @@ def main():
 
             if filter_method == "kalman":
                 prediction = kalman.predict()
-                x_pred, y_pred = int(prediction[0]), int(prediction[1])
+                x_pred = int(prediction[0][0])
+                y_pred = int(prediction[1][0])
 
                 # Clamp the predicted gaze point to the screen boundaries
                 x_pred = max(0, min(x_pred, screen_width - 1))
