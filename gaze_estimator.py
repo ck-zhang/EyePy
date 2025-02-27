@@ -105,6 +105,11 @@ class GazeEstimator:
         eye_landmarks = rotated_points[subset_indices]
         features = eye_landmarks.flatten()
 
+        yaw = np.arctan2(R[1, 0], R[0, 0])
+        pitch = np.arctan2(-R[2, 0], np.sqrt(R[2, 1] ** 2 + R[2, 2] ** 2))
+        roll = np.arctan2(R[2, 1], R[2, 2])
+        features = np.concatenate([features, [yaw, pitch, roll]])
+
         # Blink detection
         left_eye_inner = np.array([landmarks[133].x, landmarks[133].y])
         left_eye_outer = np.array([landmarks[33].x, landmarks[33].y])
@@ -126,6 +131,7 @@ class GazeEstimator:
 
         EAR = (left_EAR + right_EAR) / 2
         blink_detected = EAR < 0.2
+
         return features, blink_detected
 
     def train(self, X, y, alpha=1.0, variable_scaling=None):
