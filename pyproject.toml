@@ -1,13 +1,13 @@
 [project]
 name = "eyepy"
 version = "0.1.0"
-description = " EyePy is an eye tracking library easily implementable in your projcets"
+description = "EyePy is an eye tracking library easily implementable in your projects"
 readme = "README.md"
 requires-python = ">=3.12"
 dependencies = [
-  "mediapipe>=0.10.15",
+  "mediapipe>=0.10.21",
   "numpy>=1.26.4",
-  "opencv-python>=4.10.0.84",
-  "scikit-learn>=1.5.2",
+  "opencv-python>=4.11.0.86",
+  "scikit-learn>=1.6.1",
   "tk>=0.1.0",
 ]
