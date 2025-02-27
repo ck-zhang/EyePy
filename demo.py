@@ -5,7 +5,12 @@ import time
 import argparse
 import os
 from gaze_estimator import GazeEstimator
-from calibration import run_calibration, fine_tune_kalman_filter
+from calibration import (
+    run_9_point_calibration,
+    run_5_point_calibration,
+    run_lissajous_calibration,
+    fine_tune_kalman_filter,
+)
 from scipy.stats import gaussian_kde
 
 
@@ -21,6 +26,12 @@ def main():
     )
     parser.add_argument("--camera", type=int, default=0, help="Camera index")
     parser.add_argument(
+        "--calibration",
+        choices=["9p", "5p", "lissajous"],
+        default="9p",
+        help="Choose calibration method (9p, 5p, or lissajous).",
+    )
+    parser.add_argument(
         "--background", type=str, default=None, help="Path to background image"
     )
     parser.add_argument(
@@ -33,18 +44,26 @@ def main():
 
     filter_method = args.filter
     camera_index = args.camera
+    calibration_method = args.calibration
     background_path = args.background
     confidence_level = args.confidence
 
     gaze_estimator = GazeEstimator()
 
-    run_calibration(gaze_estimator, camera_index=camera_index)
+    # Run the chosen calibration method (default 9p)
+    if calibration_method == "9p":
+        run_9_point_calibration(gaze_estimator, camera_index=camera_index)
+    elif calibration_method == "5p":
+        run_5_point_calibration(gaze_estimator, camera_index=camera_index)
+    else:
+        run_lissajous_calibration(gaze_estimator, camera_index=camera_index)
 
     if filter_method == "kalman":
         kalman = cv2.KalmanFilter(4, 2)
         kalman.measurementMatrix = np.array([[1, 0, 0, 0], [0, 1, 0, 0]], np.float32)
         kalman.transitionMatrix = np.array(
-            [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]], np.float32
+            [[1, 0, 1, 0], [0, 1, 0, 1], [0, 0, 1, 0], [0, 0, 0, 1]],
+            np.float32,
         )
         kalman.processNoiseCov = np.eye(4, dtype=np.float32) * 10
         kalman.measurementNoiseCov = np.eye(2, dtype=np.float32) * 1
