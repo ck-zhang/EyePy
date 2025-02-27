@@ -69,7 +69,7 @@ def run_9_point_calibration(gaze_estimator, camera_index=0):
     pts = [(mx + int(c * (gw / 2)), my + int(r * (gh / 2))) for (r, c) in order]
     feats, targs = [], []
     pulse_d, cd_d = 1.0, 1.0
-    for cycle in range(2):
+    for cycle in range(1):
         for x, y in pts:
             ps = time.time()
             final_radius = 20
@@ -140,7 +140,7 @@ def run_5_point_calibration(gaze_estimator, camera_index=0):
         pts.append((x, y))
     feats, targs = [], []
     pd, cd = 1.0, 1.0
-    for cycle in range(2):
+    for cycle in range(1):
         for x, y in pts:
             ps = time.time()
             final_radius = 20
