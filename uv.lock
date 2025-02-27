@@ -116,6 +116,7 @@ dependencies = [
     { name = "mediapipe" },
     { name = "numpy" },
     { name = "opencv-python" },
+    { name = "pyvirtualcam" },
     { name = "scikit-learn" },
     { name = "tk" },
 ]
@@ -125,6 +126,7 @@ requires-dist = [
     { name = "mediapipe", specifier = ">=0.10.21" },
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "opencv-python", specifier = ">=4.11.0.86" },
+    { name = "pyvirtualcam", specifier = ">=0.12.1" },
     { name = "scikit-learn", specifier = ">=1.6.1" },
     { name = "tk", specifier = ">=0.1.0" },
 ]
@@ -508,6 +510,26 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/66/c0/0c8b6ad9f17a802ee498c46e004a0eb49bc148f2fd230864601a86dcf6db/python-dateutil-2.9.0.post0.tar.gz", hash = "sha256:37dd54208da7e1cd875388217d5e00ebd4179249f90fb72437e91a35459a0ad3", size = 342432 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/ec/57/56b9bcc3c9c6a792fcbaf139543cee77261f3651ca9da0c93f5c1221264b/python_dateutil-2.9.0.post0-py2.py3-none-any.whl", hash = "sha256:a8b2bc7bffae282281c8140a97d3aa9c14da0b136dfe83f850eea9a5f7470427", size = 229892 },
+]
+
+[[package]]
+name = "pyvirtualcam"
+version = "0.12.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "numpy" },
+]
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/40/34/0120f6fda1c79277fb211cfdaf3a7effd7ce3f4c1bf3b97708d8f77fe652/pyvirtualcam-0.12.1-cp312-cp312-macosx_10_9_x86_64.whl", hash = "sha256:c63dcdf2f0baf0ea036a88de3bdbf2a0c159c022c0a4cfbce58629b6fe17c77e", size = 305060 },
+    { url = "https://files.pythonhosted.org/packages/ab/f7/4b1cdfe49e8b8e41e890e905ecf438f34a52698641f8d707c8051ba07653/pyvirtualcam-0.12.1-cp312-cp312-macosx_11_0_arm64.whl", hash = "sha256:5bba6275bd454478cb4456668a1638d713aaeb29880e32422cd61fb4e6bdc7e6", size = 305271 },
+    { url = "https://files.pythonhosted.org/packages/e2/7b/8a410cc3c52300aa82c5c466c9a3bf229cad688ca14ca3204b523fb96efb/pyvirtualcam-0.12.1-cp312-cp312-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:f6854082a4f0b5b90cfbe9c480c311a08b63504ee471fcd07e047800a9e58c36", size = 147707 },
+    { url = "https://files.pythonhosted.org/packages/22/e1/7fb24605b40b4fe767b39ee1d1046a1c285598ef303ccb61c9b8015c678a/pyvirtualcam-0.12.1-cp312-cp312-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:3e9a1fc758f5f5e783a063f7e7649439e1d432dadafc887ab353f33511b6d3fa", size = 106344 },
+    { url = "https://files.pythonhosted.org/packages/06/86/5d8cb67186bee85a30aa53954b39d5a22a303e4277a7600b43e937adf441/pyvirtualcam-0.12.1-cp312-cp312-win_amd64.whl", hash = "sha256:bb80524ccfb0c0c7e4de435844119945ed98243c9a43eeccf1a1239ed6db7bc2", size = 174747 },
+    { url = "https://files.pythonhosted.org/packages/0e/81/76c40f8504967256b40f9d03a9dfc4e6bed5c16b4fd76df3ae08dd9486e2/pyvirtualcam-0.12.1-cp313-cp313-macosx_10_9_x86_64.whl", hash = "sha256:9806b48ee9586efe46b364bf8bc6f16cbc67c09aa2521dc9489c5ff1a6174c76", size = 305198 },
+    { url = "https://files.pythonhosted.org/packages/5c/da/740ab7e5a30a099a0511fddf37bb1845d185bb5f3fb24516bdde3d142327/pyvirtualcam-0.12.1-cp313-cp313-macosx_11_0_arm64.whl", hash = "sha256:060fd745f5cdcb82e21ff2da81b3220b53ee7f6c3ff3bc5e81a28c039cd1d25d", size = 305511 },
+    { url = "https://files.pythonhosted.org/packages/5a/43/0aa7b1794fdd58c48ce357593cb53d0a298e076d24935ec140ff7ed941b9/pyvirtualcam-0.12.1-cp313-cp313-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:daed04508b0dd3b63e50a797d08746e12525e663776982c9d3a9f1c218643106", size = 148347 },
+    { url = "https://files.pythonhosted.org/packages/2d/c5/a4928c50b36579e8d2493d751a79b98b8c345ab00a192bf8901db241136e/pyvirtualcam-0.12.1-cp313-cp313-manylinux_2_27_aarch64.manylinux_2_28_aarch64.whl", hash = "sha256:5329aedd1e43ed239ed8ee87934c5cab151c71fddedcd7e628226351e31d0c3f", size = 106308 },
+    { url = "https://files.pythonhosted.org/packages/cf/73/480db7323aaa704c7b2e171c98338737c6dda8b8a1126a313ae17787d8ed/pyvirtualcam-0.12.1-cp313-cp313-win_amd64.whl", hash = "sha256:8a81c4eb998260d2f6bd23dc305bfdbb05845fc2399f854c497e6c0e054fa656", size = 174718 },
 ]
 
 [[package]]
