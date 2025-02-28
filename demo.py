@@ -21,7 +21,7 @@ def main():
     parser.add_argument(
         "--filter",
         choices=["kalman", "kde", "none"],
-        default="kde",
+        default="none",
         help="Filter method: kalman, kde, or none",
     )
     parser.add_argument("--camera", type=int, default=0, help="Camera index")

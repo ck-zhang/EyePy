@@ -18,7 +18,7 @@ def main():
     parser = argparse.ArgumentParser(
         description="Virtual Camera Gaze Overlay (v4l2loopback)"
     )
-    parser.add_argument("--filter", choices=["kalman", "kde", "none"], default="kde")
+    parser.add_argument("--filter", choices=["kalman", "kde", "none"], default="none")
     parser.add_argument("--camera", type=int, default=0)
     parser.add_argument(
         "--calibration", choices=["9p", "5p", "lissajous"], default="9p"
