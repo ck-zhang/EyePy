@@ -4,7 +4,6 @@ import cv2
 import numpy as np
 import tkinter as tk
 import pyvirtualcam
-
 from scipy.stats import gaussian_kde
 from gaze_estimator import GazeEstimator
 from calibration import (
@@ -73,6 +72,13 @@ def main():
     gaze_history = []
     time_window = 0.5
     prev_time = time.time()
+    mask_prev = None
+    mask_next = None
+    blend_alpha = 1.0
+    contours_cache = []
+    last_kde_x_pred = None
+    last_kde_y_pred = None
+    frame_count = 0
 
     with pyvirtualcam.Camera(
         width=screen_width,
@@ -105,6 +111,7 @@ def main():
                         kalman.statePre[:2] = measurement
                         kalman.statePost[:2] = measurement
                     kalman.correct(measurement)
+
                 elif filter_method == "kde":
                     current_time = time.time()
                     gaze_history.append((current_time, x, y))
@@ -113,11 +120,11 @@ def main():
                         for (t, gx, gy) in gaze_history
                         if current_time - t <= time_window
                     ]
-                    if len(gaze_history) > 1:
+                    if len(gaze_history) > 1 and frame_count % 5 == 0:
                         arr = np.array([[gx, gy] for (_, gx, gy) in gaze_history])
                         try:
                             kde = gaussian_kde(arr.T)
-                            xi, yi = np.mgrid[0:screen_width:320j, 0:screen_height:200j]
+                            xi, yi = np.mgrid[0:screen_width:200j, 0:screen_height:120j]
                             coords = np.vstack([xi.ravel(), yi.ravel()])
                             zi = kde(coords).reshape(xi.shape).T
                             zi_flat = zi.flatten()
@@ -126,31 +133,71 @@ def main():
                             cumsum = np.cumsum(zi_sorted)
                             cumsum /= cumsum[-1]
                             idx = np.searchsorted(cumsum, confidence_level)
-                            idx = min(idx, len(zi_sorted) - 1)
+                            if idx >= len(zi_sorted):
+                                idx = len(zi_sorted) - 1
                             threshold = zi_sorted[idx]
-
-                            x_pred = int(np.mean(arr[:, 0]))
-                            y_pred = int(np.mean(arr[:, 1]))
+                            mask_new = np.where(zi >= threshold, 1, 0).astype(np.uint8)
+                            mask_new = cv2.resize(
+                                mask_new, (screen_width, screen_height)
+                            )
+                            kernel = np.ones((5, 5), np.uint8)
+                            mask_new = cv2.morphologyEx(
+                                mask_new, cv2.MORPH_OPEN, kernel
+                            )
+                            mask_new = cv2.morphologyEx(
+                                mask_new, cv2.MORPH_CLOSE, kernel
+                            )
+                            mask_prev = mask_next if mask_next is not None else mask_new
+                            mask_next = mask_new
+                            last_kde_x_pred = int(np.mean(arr[:, 0]))
+                            last_kde_y_pred = int(np.mean(arr[:, 1]))
+                            blend_alpha = 0.0
                         except np.linalg.LinAlgError:
-                            x_pred = int(np.mean(arr[:, 0]))
-                            y_pred = int(np.mean(arr[:, 1]))
-                    else:
-                        x_pred, y_pred = x, y
+                            last_kde_x_pred = int(np.mean(arr[:, 0]))
+                            last_kde_y_pred = int(np.mean(arr[:, 1]))
+                    x_pred = last_kde_x_pred
+                    y_pred = last_kde_y_pred
+
                 else:
                     x_pred, y_pred = x, y
 
             output = green_bg.copy()
 
-            if x_pred is not None and y_pred is not None:
-                if filter_method == "kde":
-                    cv2.circle(output, (x_pred, y_pred), 20, (0, 255, 255), -1)
-                else:
-                    cv2.circle(output, (x_pred, y_pred), 10, (0, 0, 255), -1)
+            if (
+                filter_method == "kde"
+                and mask_prev is not None
+                and mask_next is not None
+            ):
+                blend_alpha = min(blend_alpha + 0.2, 1.0)
+                blended_mask = cv2.addWeighted(
+                    mask_prev.astype(np.float32),
+                    1.0 - blend_alpha,
+                    mask_next.astype(np.float32),
+                    blend_alpha,
+                    0,
+                ).astype(np.uint8)
+                kernel2 = np.ones((5, 5), np.uint8)
+                blended_mask = cv2.morphologyEx(blended_mask, cv2.MORPH_OPEN, kernel2)
+                blended_mask = cv2.morphologyEx(blended_mask, cv2.MORPH_CLOSE, kernel2)
+                contours, _ = cv2.findContours(
+                    blended_mask, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_TC89_KCOS
+                )
+                contours_cache = contours
+                if x_pred is not None and y_pred is not None:
+                    cv2.circle(output, (x_pred, y_pred), 8, (0, 0, 255), -1)
+
+            if filter_method == "kde" and contours_cache:
+                cv2.drawContours(output, contours_cache, -1, (0, 0, 255), 3)
+
+            if filter_method != "kde" and x_pred is not None and y_pred is not None:
+                cv2.circle(output, (x_pred, y_pred), 10, (0, 0, 255), -1)
 
             cam.send(output)
             cam.sleep_until_next_frame()
+            frame_count += 1
 
     cap.release()
+    cv2.destroyAllWindows()
 
 
 if __name__ == "__main__":
